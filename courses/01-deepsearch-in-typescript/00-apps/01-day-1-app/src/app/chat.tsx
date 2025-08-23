@@ -2,17 +2,44 @@
 
 import { useChat } from "@ai-sdk/react";
 import { Loader2 } from "lucide-react";
+import { useState } from "react";
 import { ChatMessage } from "~/components/chat-message";
 import { SignInModal } from "~/components/sign-in-modal";
 
 interface ChatProps {
   userName: string;
+  isAuthenticated: boolean;
 }
 
-export const ChatPage = ({ userName }: ChatProps) => {
+export const ChatPage = ({ userName, isAuthenticated }: ChatProps) => {
+  const [showSignInModal, setShowSignInModal] = useState(false);
+
   // Default endpoint for useChat is "/api/chat"
   const { messages, input, handleInputChange, handleSubmit, isLoading } =
-    useChat();
+    useChat({
+      onError: (error) => {
+        // Show sign-in modal if user gets 401 (unauthorized)
+        if (
+          error.message.includes("401") ||
+          error.message.includes("Unauthorized")
+        ) {
+          setShowSignInModal(true);
+        }
+      },
+    });
+
+  const onSubmit = (e: React.FormEvent<HTMLFormElement>) => {
+    e.preventDefault();
+
+    // If user is not authenticated, show sign-in modal instead of submitting
+    if (!isAuthenticated) {
+      setShowSignInModal(true);
+      return;
+    }
+
+    // Otherwise, proceed with normal chat submission
+    handleSubmit(e);
+  };
 
   return (
     <>
@@ -35,7 +62,7 @@ export const ChatPage = ({ userName }: ChatProps) => {
         </div>
 
         <div className="border-t border-gray-700">
-          <form onSubmit={handleSubmit} className="mx-auto max-w-[65ch] p-4">
+          <form onSubmit={onSubmit} className="mx-auto max-w-[65ch] p-4">
             <div className="flex gap-2">
               <input
                 value={input}
@@ -62,7 +89,10 @@ export const ChatPage = ({ userName }: ChatProps) => {
         </div>
       </div>
 
-      <SignInModal isOpen={false} onClose={() => undefined} />
+      <SignInModal
+        isOpen={showSignInModal}
+        onClose={() => setShowSignInModal(false)}
+      />
     </>
   );
 };
