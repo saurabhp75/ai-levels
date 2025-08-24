@@ -1,9 +1,7 @@
 import type { Message } from "ai";
 import { streamText, createDataStreamResponse } from "ai";
-import { z } from "zod";
 import { auth } from "~/server/auth";
 import { model } from "~/server/ai/model";
-import { searchSerper } from "~/serper";
 
 export const maxDuration = 60;
 
@@ -26,31 +24,12 @@ export async function POST(request: Request) {
       const result = streamText({
         model,
         messages,
-        system: `You are a helpful AI assistant with access to web search. Always use the search web tool to find current, accurate information to answer user questions. When providing information, always cite your sources with inline links in markdown format [text](url). Be comprehensive in your research and provide multiple sources when available.`,
-        maxSteps: 10, // This makes the LLM behave like an agent
-        tools: {
-          searchWeb: {
-            parameters: z.object({
-              query: z.string().describe("The query to search the web for"),
-            }),
-            execute: async ({ query }, { abortSignal }) => {
-              const results = await searchSerper(
-                { q: String(query), num: 10 },
-                abortSignal,
-              );
-
-              return results.organic.map((result) => ({
-                // Only send relevant info, don't swamp LLM with unnecessary data
-                title: result.title,
-                link: result.link,
-                snippet: result.snippet,
-              }));
-            },
-          },
-        },
+        system: `You are a helpful AI assistant with native web search capabilities. Use your search grounding to find current, accurate information to answer user questions. Always cite your sources with inline links in markdown format [text](url). Be comprehensive in your research and provide multiple sources when available.`,
       });
 
-      result.mergeIntoDataStream(dataStream);
+      result.mergeIntoDataStream(dataStream, {
+        sendSources: true,
+      });
     },
     onError: (e) => {
       console.error(e);

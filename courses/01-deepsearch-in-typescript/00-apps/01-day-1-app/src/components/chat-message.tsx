@@ -78,6 +78,31 @@ const ToolInvocation = ({
   );
 };
 
+const Source = ({ part }: { part: MessagePart }) => {
+  // Type guard to ensure this is a source part
+  if (part.type !== "source") return null;
+
+  console.log(part);
+
+  return (
+    <div className="mb-2 rounded-lg border border-blue-600 bg-blue-900/20 p-3">
+      <div className="flex items-start gap-2">
+        <span className="text-blue-400">🔗</span>
+        <div className="min-w-0 flex-1">
+          <a
+            href={part.source.url}
+            target="_blank"
+            rel="noopener noreferrer"
+            className="hover:text-blue-300 hover:underline"
+          >
+            {part.source.title ?? part.source.url}
+          </a>
+        </div>
+      </div>
+    </div>
+  );
+};
+
 export const ChatMessage = ({ parts, role, userName }: ChatMessageProps) => {
   const isAI = role === "assistant";
 
@@ -99,6 +124,9 @@ export const ChatMessage = ({ parts, role, userName }: ChatMessageProps) => {
             }
             if (part.type === "tool-invocation") {
               return <ToolInvocation key={index} part={part} />;
+            }
+            if (part.type === "source") {
+              return <Source key={index} part={part} />;
             }
             return null;
           })}
