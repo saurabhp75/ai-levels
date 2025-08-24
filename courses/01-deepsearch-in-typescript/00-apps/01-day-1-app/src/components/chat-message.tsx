@@ -1,7 +1,11 @@
 import ReactMarkdown, { type Components } from "react-markdown";
+import type { Message } from "ai";
+
+// Define MessagePart type since it's not exported from ai package
+export type MessagePart = NonNullable<Message["parts"]>[number];
 
 interface ChatMessageProps {
-  text: string;
+  parts: MessagePart[];
   role: string;
   userName: string;
 }
@@ -38,7 +42,43 @@ const Markdown = ({ children }: { children: string }) => {
   return <ReactMarkdown components={components}>{children}</ReactMarkdown>;
 };
 
-export const ChatMessage = ({ text, role, userName }: ChatMessageProps) => {
+const ToolInvocation = ({
+  part,
+}: {
+  part: Extract<MessagePart, { type: "tool-invocation" }>;
+}) => {
+  const { toolInvocation } = part;
+  const { state, toolName, args } = toolInvocation;
+
+  return (
+    <div className="mb-4 rounded-lg border border-gray-700 bg-gray-800 p-4">
+      <div className="mb-2 flex items-center gap-2">
+        <span className="text-sm font-medium text-gray-400">Tool:</span>
+        <span className="text-sm text-gray-300">{toolName}</span>
+      </div>
+      <div className="mb-2">
+        <span className="text-sm font-medium text-gray-400">State:</span>
+        <span className="ml-2 text-sm text-gray-300">{state}</span>
+      </div>
+      <div className="mb-2">
+        <span className="text-sm font-medium text-gray-400">Arguments:</span>
+        <pre className="mt-1 overflow-x-auto rounded bg-gray-900 p-2 text-sm text-gray-300">
+          {JSON.stringify(args, null, 2)}
+        </pre>
+      </div>
+      {toolInvocation.state === "result" && toolInvocation.result && (
+        <div>
+          <span className="text-sm font-medium text-gray-400">Result:</span>
+          <pre className="mt-1 overflow-x-auto rounded bg-gray-900 p-2 text-sm text-gray-300">
+            {JSON.stringify(toolInvocation.result, null, 2)}
+          </pre>
+        </div>
+      )}
+    </div>
+  );
+};
+
+export const ChatMessage = ({ parts, role, userName }: ChatMessageProps) => {
   const isAI = role === "assistant";
 
   return (
@@ -53,7 +93,15 @@ export const ChatMessage = ({ text, role, userName }: ChatMessageProps) => {
         </p>
 
         <div className="prose prose-invert max-w-none">
-          <Markdown>{text}</Markdown>
+          {parts.map((part, index) => {
+            if (part.type === "text") {
+              return <Markdown key={index}>{part.text}</Markdown>;
+            }
+            if (part.type === "tool-invocation") {
+              return <ToolInvocation key={index} part={part} />;
+            }
+            return null;
+          })}
         </div>
       </div>
     </div>
